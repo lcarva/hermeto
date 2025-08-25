@@ -344,7 +344,11 @@ def _download(
                     repoid = lockfile.generated_source_repoid
 
             dest = output_dir.joinpath(arch.arch, repoid, Path(pkg.url).name)
-            files[pkg.url] = str(dest)
+            url = pkg.url
+            # TODO: This is a hack. _async_download_oci_file should be able to do this from the metadata.
+            if pkg.url.startswith("oci://") and '@' not in pkg.url:
+                url = f"{pkg.url}@{pkg.checksum}"
+            files[url] = str(dest)
             metadata[dest] = {
                 "repoid": pkg.repoid,
                 "url": pkg.url,
@@ -358,7 +362,6 @@ def _download(
                 files,
                 get_config().concurrency_limit,
                 ssl_context=_get_ssl_context(ssl_options=ssl_options) if ssl_options else None,
-                metadata=metadata,
             )
         )
     return metadata

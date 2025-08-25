@@ -577,7 +577,9 @@ jinja2==3.1.6 \
 jsonschema==4.25.0 \
     --hash=sha256:24c2e8da302de79c8b9382fee3e76b355e44d2a4364bb207159ce10b517bd716 \
     --hash=sha256:e63acf5c11762c0e6672ffb61482bdf57f0876684d8d249c0fe2d730d48bc55f
-    # via hermeto (pyproject.toml)
+    # via
+    #   hermeto (pyproject.toml)
+    #   oras
 jsonschema-specifications==2025.4.1 \
     --hash=sha256:4653bffbd6584f7de83a67e0d620ef16900b390ddc7939d56684d6c81e33f1af \
     --hash=sha256:630159c9f4dbea161a6a2205c3011cc4f18ff381b189fff48bb39b9bf26ae608
@@ -855,6 +857,10 @@ mypy-extensions==1.1.0 \
 nox==2025.5.1 \
     --hash=sha256:2a571dfa7a58acc726521ac3cd8184455ebcdcbf26401c7b737b5bc6701427b2 \
     --hash=sha256:56abd55cf37ff523c254fcec4d152ed51e5fe80e2ab8317221d8b828ac970a31
+    # via hermeto (pyproject.toml)
+oras==0.2.37 \
+    --hash=sha256:5973f52287887813dad6affede51d7a699f443dacad1e98e5f50634ec80c9f37 \
+    --hash=sha256:7e48f6b8cda08c11f612c16e2bdafc346b884be3a83b924495b5e43d34af0e1f
     # via hermeto (pyproject.toml)
 packageurl-python==0.17.3 \
     --hash=sha256:719995f0c7f706890277ba57ec95afcaa9696c836a7675770a1279b01a41f7be \
@@ -1263,6 +1269,7 @@ requests==2.32.4 \
     # via
     #   hermeto (pyproject.toml)
     #   mkdocs-material
+    #   oras
     #   pybuild-deps
     #   pypi-simple
 rich==14.1.0 \
