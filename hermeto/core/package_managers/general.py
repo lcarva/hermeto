@@ -113,15 +113,26 @@ async def _async_download_oci_file(
     :param str download_path: File path location
     :param str digest: Expected digest of the layer to download
     """
+    try:
+        client = oras.client.OrasClient()
 
-    client = oras.client.OrasClient()
+        # TODO: Authentication.
+        # TODO: Session.
 
-    # TODO: Authentication.
-    # TODO: Session.
+        url = oci_url.removeprefix("oci://")
+        log.debug(
+            f"OrasClient.download_blob(url: {url}, digest: {digest}, download_path: {download_path})"
+        )
+        client.download_blob(url, digest, download_path)
 
-    url = oci_url.removeprefix("oci://")
-    client.download_blob(url, digest, download_path)
-    return
+    except Exception as exception:
+        log.error(f"Unsuccessful OCI download: {oci_url}")
+        # "from None" since we have the exception context in the logs
+        raise FetchError(
+            f"exception_name: {exception.__class__.__name__}, " f"details: {exception}"
+        ) from None
+
+    log.debug(f"Download OCI completed - {url}")
 
 async def async_download_files(
     files_to_download: dict[str, Union[str, PathLike[str]]],
