@@ -1,7 +1,10 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 import asyncio
+import base64
 import logging
 import ssl
+import os
+import json
 from os import PathLike
 from pathlib import Path
 from typing import Any, Optional, Union
@@ -114,12 +117,9 @@ async def _async_download_oci_file(
     :param str digest: Expected digest of the layer to download
     """
     try:
-        client = oras.client.OrasClient()
-
-        # TODO: Authentication.
-        # TODO: Session.
-
         url = oci_url.removeprefix("oci://")
+        client = _get_oras_client(url)
+
         log.debug(
             f"OrasClient.download_blob(url: {url}, digest: {digest}, download_path: {download_path})"
         )
@@ -133,6 +133,46 @@ async def _async_download_oci_file(
         ) from None
 
     log.debug(f"Download OCI completed - {url}")
+
+def _get_oras_client(url: str) -> oras.client.OrasClient:
+    hostname = url.split("/")[0]
+    client = oras.client.OrasClient(hostname=hostname)
+
+    authfile = os.environ.get("REGSITRY_AUTH", os.path.expanduser("~/.docker/config.json"))
+    if os.path.exists(authfile):
+        # Remove tag from the URL if present (e.g., registry:5000/image:tag -> registry:5000/image)
+        # Only remove the tag if it's after the last slash (i.e., not a port)
+        last_slash = url.rfind("/")
+        last_colon = url.rfind(":")
+        if last_colon > last_slash:
+            url = url[:last_colon]
+
+        username = password = ""
+        with open(authfile, "r") as f:
+            config = json.load(f)
+            while True:
+                if url in config["auths"]:
+                    log.debug(f"Found auth for {url}")
+                    auth_b64 = config["auths"][url]["auth"]
+                    decoded_auth = base64.b64decode(auth_b64).decode("utf-8")
+
+                    username, password = decoded_auth.split(":", 1)
+                    if username == password == "":
+                        # Don't exit the loop yet. There may be more specific credentials.
+                        log.warning(f"Ignoring empty credentials for {url}")
+                    else:
+                        client.login(username=username, password=password)
+                        break
+
+                # Keep searching for less specific credentials:
+                #   registry:5000/org/image, registry:5000/org, registry:5000
+                if "/" in url:
+                    url = url.rsplit("/", 1)[0]
+                    continue
+
+                break
+
+    return client
 
 async def async_download_files(
     files_to_download: dict[str, Union[str, PathLike[str]]],
