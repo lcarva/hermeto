@@ -3,6 +3,7 @@ import asyncio
 import logging
 import ssl
 from os import PathLike
+from pathlib import Path
 from typing import Any, Optional, Union
 from urllib.parse import urlparse
 
@@ -103,15 +104,14 @@ async def _async_download_binary_file(
 async def _async_download_oci_file(
     oci_url: str,
     download_path: Union[str, PathLike[str]],
+    digest: str,
 ) -> None:
     """
     Download a binary file from an OCI registry.
 
     :param str oci_url: OCI URL in format oci://registry/repo:tag
     :param str download_path: File path location
-    :param str checksum: Expected checksum of the layer to download
-    :param ssl.SSLContext ssl_context: SSL context for secure connections
-    :raise FetchError: If download failed
+    :param str digest: Expected digest of the layer to download
     """
 
     client = oras.client.OrasClient()
@@ -119,21 +119,22 @@ async def _async_download_oci_file(
     # TODO: Authentication.
     # TODO: Session.
 
-    url, checksum = oci_url.split('@', 1)
-    url = url.removeprefix("oci://")
-    client.download_blob(url, checksum, download_path)
+    url = oci_url.removeprefix("oci://")
+    client.download_blob(url, digest, download_path)
     return
 
 async def async_download_files(
     files_to_download: dict[str, Union[str, PathLike[str]]],
     concurrency_limit: int,
     ssl_context: Optional[ssl.SSLContext] = None,
+    metadata: dict[PathLike[str], dict[str, str]] = None,
 ) -> None:
     """Asynchronous function to download files.
 
     :param files_to_download: Dict of files to download with file paths
     :param concurrency_limit: Max number of concurrent tasks (downloads).
-    :param metadata: Optional metadata dict indexed by file path, containing checksum info.
+    :param ssl_context: Optional SSL context for secure connections.
+    :param metadata: Optional metadata dict indexed by file path, containing info such as checksum.
     """
     trace_config = aiohttp.TraceConfig()
     num_attempts: int = int(DEFAULT_RETRY_OPTIONS["total"])
@@ -165,7 +166,10 @@ async def async_download_files(
 
             # Route to appropriate download function based on URL scheme
             if url.startswith("oci://"):
-                task = _async_download_oci_file(url, download_path)
+                if metadata is None:
+                    raise ValueError("metadata is required for OCI downloads")
+                digest = metadata[Path(download_path)]["checksum"]
+                task = _async_download_oci_file(url, download_path, digest)
             else:
                 task = _async_download_binary_file(
                     session, url, download_path, ssl_context=ssl_context

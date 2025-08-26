@@ -343,12 +343,15 @@ def _download(
                 else:
                     repoid = lockfile.generated_source_repoid
 
-            dest = output_dir.joinpath(arch.arch, repoid, Path(pkg.url).name)
-            url = pkg.url
-            # TODO: This is a hack. _async_download_oci_file should be able to do this from the metadata.
+            dest_fname = Path(pkg.url).name
+            # Ideally, the destination filename should be taken from the OCI Artifact instead of
+            # using the tag from the OCI reference. However, with the current code structure, the
+            # destination filename must be computed right now before the OCI registry is queried.
             if pkg.url.startswith("oci://") and '@' not in pkg.url:
-                url = f"{pkg.url}@{pkg.checksum}"
-            files[url] = str(dest)
+                dest_fname = pkg.url.split(":")[-1]
+
+            dest = output_dir.joinpath(arch.arch, repoid, dest_fname)
+            files[pkg.url] = str(dest)
             metadata[dest] = {
                 "repoid": pkg.repoid,
                 "url": pkg.url,
@@ -362,6 +365,7 @@ def _download(
                 files,
                 get_config().concurrency_limit,
                 ssl_context=_get_ssl_context(ssl_options=ssl_options) if ssl_options else None,
+                metadata=metadata,
             )
         )
     return metadata
